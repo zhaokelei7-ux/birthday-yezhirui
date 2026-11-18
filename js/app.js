@@ -1,5 +1,10 @@
 import { buildLayout, CENTER, RINGS, polar, sectorPath } from './geometry.js';
-import { createState, countLit, isLit } from './state.js';
+import {
+  createState, beginPlayback, completePlayback, cancelPlayback,
+  isLit, countLit, isComplete,
+} from './state.js';
+import { loadLit, saveLit, clearLit } from './storage.js';
+import { createPlayer } from './audio.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const GROUP_LABEL = { classmate: '同学', volunteer: '志工', teacher: '班主任' };
@@ -8,19 +13,67 @@ const els = {
   cake: document.querySelector('#cake'),
   progress: document.querySelector('#progress-count'),
   hint: document.querySelector('#hint'),
+  reset: document.querySelector('#reset-btn'),
+  card: document.querySelector('#card'),
+  cardKicker: document.querySelector('#card-kicker'),
+  cardTitle: document.querySelector('#card-title'),
+  cardBlessing: document.querySelector('#card-blessing'),
+  cardStatus: document.querySelector('#card-status'),
+  cardBar: document.querySelector('#card-bar'),
+  cardReplay: document.querySelector('#card-replay'),
+  cardClose: document.querySelector('#card-close'),
 };
 
 let layout = [];
+let manifest = {};
 let state = createState();
+let player = null;
+let activeName = null;
+let activeView = 'blessing';
+let lastFocus = null;
 const sliceNodes = new Map();
+
+function getStorage() {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
 
 async function init() {
   try {
-    const response = await fetch('./data/people.json');
-    if (!response.ok) throw new Error(`people.json ${response.status}`);
-    const people = await response.json();
+    const [peopleResponse, manifestResponse] = await Promise.all([
+      fetch('./data/people.json'),
+      fetch('./data/audio-manifest.json').catch(() => null),
+    ]);
+
+    if (!peopleResponse.ok) throw new Error(`people.json ${peopleResponse.status}`);
+    const people = await peopleResponse.json();
+
+    if (manifestResponse && manifestResponse.ok) {
+      try {
+        manifest = await manifestResponse.json();
+      } catch {
+        manifest = {};
+      }
+    }
+
     layout = buildLayout(people);
+    const knownNames = new Set(people.map((person) => person.name));
+    state = createState({
+      lit: loadLit(getStorage()).filter((name) => knownNames.has(name)),
+    });
+
+    player = createPlayer({
+      onEnded: handleAudioEnded,
+      onError: handleAudioError,
+      onProgress: handleProgress,
+      onDuration: handleDuration,
+    });
+
     renderCake();
+    bindEvents();
     render();
   } catch (error) {
     console.error(error);
@@ -38,8 +91,8 @@ function el(tag, attrs) {
 function ariaLabel(entry, lit) {
   const group = entry.group === 'classmate' ? entry.team : GROUP_LABEL[entry.group];
   return lit
-    ? `${entry.name}，${group}，已点亮`
-    : `${entry.name}，${group}，未点亮`;
+    ? `${entry.name}，${group}，已点亮，点击查看祝福并重播语音`
+    : `${entry.name}，${group}，未点亮，点击播放语音`;
 }
 
 function renderCake() {
@@ -96,6 +149,14 @@ function renderCake() {
       class: 'flame',
     }));
 
+    group.addEventListener('click', () => handleSlice(entry.name));
+    group.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        handleSlice(entry.name);
+      }
+    });
+
     els.cake.append(group);
     sliceNodes.set(entry.name, { group, label });
   }
@@ -103,12 +164,176 @@ function renderCake() {
 
 function render() {
   els.progress.textContent = String(countLit(state));
+
   for (const entry of layout) {
     const node = sliceNodes.get(entry.name);
     const lit = isLit(state, entry.name);
     node.group.classList.toggle('lit', lit);
+    node.group.classList.toggle('playing', state.playingName === entry.name);
+    node.group.classList.toggle('missing', state.missingAudio.includes(entry.name));
     node.group.setAttribute('aria-label', ariaLabel(entry, lit));
   }
+
+  const count = countLit(state);
+  if (count >= 28) {
+    els.hint.textContent = '28 份祝福，全部点亮。';
+  } else if (count === 0) {
+    els.hint.textContent = '点击任意一块蛋糕，听 TA 对你说生日快乐';
+  } else {
+    els.hint.textContent = `已有 ${count} 份祝福被点亮，继续点击灰暗的蛋糕吧`;
+  }
+}
+
+function handleSlice(name) {
+  const entry = layout.find((person) => person.name === name);
+  if (!entry || state.status === 'playing') return;
+
+  lastFocus = document.activeElement;
+
+  if (isLit(state, name)) {
+    openCard(entry, 'blessing');
+    return;
+  }
+
+  const started = beginPlayback(state, name);
+  if (!started) return;
+
+  const previous = state;
+  state = started;
+
+  const audio = manifest[name];
+  if (!audio) {
+    state = completePlayback(state, name, { missingAudio: true });
+    afterLit(previous, entry, true);
+    return;
+  }
+
+  openCard(entry, 'playing');
+  player.play(audio.file, { durationHint: audio.duration });
+  render();
+}
+
+function handleAudioEnded() {
+  const name = state.playingName;
+  if (!name) return;
+  const entry = layout.find((person) => person.name === name);
+  if (!entry) return;
+
+  const previous = state;
+  state = completePlayback(state, name);
+  afterLit(previous, entry, false);
+}
+
+function handleAudioError() {
+  const name = state.playingName;
+  if (!name) return;
+  const entry = layout.find((person) => person.name === name);
+  if (!entry) return;
+
+  const previous = state;
+  state = completePlayback(state, name, { missingAudio: true });
+  afterLit(previous, entry, true);
+}
+
+function afterLit(previous, entry, missingAudio) {
+  saveLit(getStorage(), state.lit);
+  render();
+  openCard(entry, 'blessing', { missingAudio });
+}
+
+function openCard(entry, view, { missingAudio = false } = {}) {
+  activeName = entry.name;
+  activeView = view;
+
+  const groupName = entry.group === 'classmate' ? entry.team : GROUP_LABEL[entry.group];
+  const missing = missingAudio || state.missingAudio.includes(entry.name);
+
+  els.cardKicker.textContent = view === 'playing' ? '正在收听' : '来自';
+  els.cardTitle.textContent = view === 'playing'
+    ? entry.name
+    : `${entry.name} · ${groupName}`;
+  els.cardBlessing.textContent = view === 'playing'
+    ? '请听 TA 对你说的话…'
+    : entry.blessing;
+  els.cardStatus.textContent = view === 'playing'
+    ? '正在播放 0″'
+    : missing ? '语音暂缺，祝福已点亮' : '这份祝福已点亮';
+  els.cardBar.style.width = view === 'playing' ? '0%' : '100%';
+  els.cardReplay.hidden = view !== 'blessing' || !manifest[entry.name];
+
+  els.card.hidden = false;
+  els.cardClose.focus({ preventScroll: true });
+}
+
+function closeCard({ stopAudio = true } = {}) {
+  if (stopAudio && state.status === 'playing') {
+    player.stop();
+    state = cancelPlayback(state);
+    render();
+  }
+
+  els.card.hidden = true;
+  activeName = null;
+
+  if (lastFocus && document.contains(lastFocus)) {
+    lastFocus.focus({ preventScroll: true });
+  }
+  lastFocus = null;
+}
+
+function replay() {
+  if (!activeName || state.status === 'playing') return;
+
+  const entry = layout.find((person) => person.name === activeName);
+  const audio = manifest[activeName];
+  if (!entry || !audio) return;
+
+  const started = beginPlayback(state, activeName);
+  if (!started) return;
+
+  state = started;
+  openCard(entry, 'playing');
+  player.play(audio.file, { durationHint: audio.duration });
+  render();
+}
+
+function handleProgress(current, duration) {
+  if (activeView !== 'playing' || !duration || els.card.hidden) return;
+  const ratio = Math.max(0, Math.min(1, current / duration));
+  els.cardBar.style.width = `${(ratio * 100).toFixed(1)}%`;
+  els.cardStatus.textContent = `正在播放 ${formatTime(current)} / ${formatTime(duration)}`;
+}
+
+function handleDuration(duration) {
+  if (activeView !== 'playing' || els.card.hidden) return;
+  els.cardStatus.textContent = `正在播放 0″ / ${formatTime(duration)}`;
+}
+
+function formatTime(seconds) {
+  return `${Math.max(0, Math.round(seconds))}″`;
+}
+
+function bindEvents() {
+  els.cardClose.addEventListener('click', () => closeCard());
+  els.cardReplay.addEventListener('click', replay);
+  els.card.addEventListener('click', (event) => {
+    if (event.target === els.card) closeCard();
+  });
+  els.reset.addEventListener('click', resetProgress);
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !els.card.hidden) closeCard();
+  });
+}
+
+function resetProgress() {
+  if (!window.confirm('确定要清空 28 份祝福的点亮进度吗？')) return;
+
+  player.stop();
+  clearLit(getStorage());
+  state = createState();
+  closeCard({ stopAudio: false });
+  render();
 }
 
 init();
