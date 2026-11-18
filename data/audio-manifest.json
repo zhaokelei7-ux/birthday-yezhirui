@@ -7,9 +7,25 @@
     "file": "audio/p02.mp3",
     "duration": 9.9
   },
+  "姚蓬杰": {
+    "file": "audio/p06.mp3",
+    "duration": 3.89
+  },
+  "张慧峰": {
+    "file": "audio/p07.mp3",
+    "duration": 10.21
+  },
   "樊佳": {
     "file": "audio/p10.mp3",
     "duration": 16.96
+  },
+  "顾桢": {
+    "file": "audio/p12.mp3",
+    "duration": 18.29
+  },
+  "孙中旺": {
+    "file": "audio/p14.mp3",
+    "duration": 16.01
   },
   "黄崇珂": {
     "file": "audio/p19.mp3",
@@ -19,8 +35,28 @@
     "file": "audio/p20.mp3",
     "duration": 3.75
   },
+  "赵慢慢": {
+    "file": "audio/p21.mp3",
+    "duration": 8.28
+  },
   "郑会": {
     "file": "audio/p22.mp3",
     "duration": 7.93
+  },
+  "彭文": {
+    "file": "audio/p23.mp3",
+    "duration": 7.97
+  },
+  "高大保": {
+    "file": "audio/p24.mp3",
+    "duration": 13.77
+  },
+  "金慧": {
+    "file": "audio/p25.mp3",
+    "duration": 22.6
+  },
+  "黄美娟": {
+    "file": "audio/p26.mp3",
+    "duration": 28.55
   }
 }

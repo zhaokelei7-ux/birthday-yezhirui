@@ -99,14 +99,14 @@ function el(tag, attrs) {
 
 function ariaLabel(entry, lit, canReplay) {
   const group = entry.group === 'classmate' ? entry.team : GROUP_LABEL[entry.group];
-  if (!lit) {
-    return canReplay
-      ? `${entry.name}，${group}，未点亮，点击播放语音`
-      : `${entry.name}，${group}，未点亮，语音暂缺，点击查看祝福`;
+  if (!canReplay) {
+    return lit
+      ? `${entry.name}，${group}，已点亮，点击查看祝福`
+      : `${entry.name}，${group}，未点亮，点击查看祝福`;
   }
-  return canReplay
+  return lit
     ? `${entry.name}，${group}，已点亮，点击查看祝福并重播语音`
-    : `${entry.name}，${group}，已点亮，点击查看祝福`;
+    : `${entry.name}，${group}，未点亮，点击播放语音`;
 }
 
 function renderCake() {
@@ -219,7 +219,7 @@ function handleSlice(name) {
   const audio = manifest[name];
   if (!audio) {
     state = completePlayback(state, name, { missingAudio: true });
-    afterLit(entry, true, true);
+    afterLit(entry, true);
     return;
   }
 
@@ -236,7 +236,7 @@ function handleAudioEnded() {
 
   const newlyLit = !isLit(state, name);
   state = completePlayback(state, name);
-  afterLit(entry, false, newlyLit);
+  afterLit(entry, newlyLit);
 }
 
 function handleAudioError() {
@@ -247,10 +247,10 @@ function handleAudioError() {
 
   const newlyLit = !isLit(state, name);
   state = completePlayback(state, name, { missingAudio: true });
-  afterLit(entry, true, newlyLit);
+  afterLit(entry, newlyLit);
 }
 
-function afterLit(entry, missingAudio, newlyLit = false) {
+function afterLit(entry, newlyLit = false) {
   saveLit(getStorage(), state.lit);
   render();
 
@@ -260,15 +260,14 @@ function afterLit(entry, missingAudio, newlyLit = false) {
     return;
   }
 
-  openCard(entry, 'blessing', { missingAudio });
+  openCard(entry, 'blessing');
 }
 
-function openCard(entry, view, { missingAudio = false } = {}) {
+function openCard(entry, view) {
   activeName = entry.name;
   activeView = view;
 
   const groupName = entry.group === 'classmate' ? entry.team : GROUP_LABEL[entry.group];
-  const missing = missingAudio || state.missingAudio.includes(entry.name) || !manifest[entry.name];
 
   els.card.hidden = false;
 
@@ -281,7 +280,7 @@ function openCard(entry, view, { missingAudio = false } = {}) {
     : entry.blessing;
   els.cardStatus.textContent = view === 'playing'
     ? '正在播放 0″'
-    : missing ? '语音暂缺，祝福已点亮' : '这份祝福已点亮';
+    : '这份祝福已点亮';
   els.cardBar.style.width = view === 'playing' ? '0%' : '100%';
   els.cardReplay.hidden = view !== 'blessing' || !manifest[entry.name];
 
