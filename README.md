@@ -34,7 +34,7 @@ ES Modules 不能直接用 `file://` 打开，需要起一个本地服务器：
 ## 录音要求
 
 - 每人一段，安静环境录制，离麦克风 10–20cm。
-- 每段 2–15 秒，开头直接说「叶智睿，生日快乐！」。
+- 每段 2–15 秒（部署检查只强制要求大于 0.3 秒），开头直接说「叶智睿，生日快乐！」。
 - 文件名写姓名，例如 `宋书涵.m4a`。
 - 支持的格式：`.mp3`、`.m4a`、`.aac`、`.wav`、`.ogg`、`.flac`、`.amr`。
 - 把文件放进 `audio-src/`，不要放进 `audio/`。
@@ -58,17 +58,19 @@ ES Modules 不能直接用 `file://` 打开，需要起一个本地服务器：
 /d/miniconda/envs/finpy/python.exe -m pip install imageio-ffmpeg
 ```
 
-没有 ffmpeg 时脚本会直接复制浏览器可播放的源文件，页面仍能工作，但不会统一音量。
+没有 ffmpeg 时脚本会直接复制浏览器可播放的源文件，页面仍能工作，但不会统一音量。注意：非 WAV 文件在无 ffmpeg 时读不出时长，`--strict` 会失败；部署前请安装 `imageio-ffmpeg`。
 
 ## 校验
 
 ```bash
-# 日常检查（音频不齐也能通过人员校验）
+# 日常检查：没有 manifest 时只校验人员数据
 /d/miniconda/envs/finpy/python.exe scripts/check_assets.py
 
-# 部署前严格检查（要求 28 段音频齐全且时长正常）
+# 部署前严格检查（要求 28 段音频齐全且时长 > 0.3 秒）
 /d/miniconda/envs/finpy/python.exe scripts/check_assets.py --strict
 ```
+
+`--strict` 要求 manifest 中每个人对应的音频文件存在、非空、时长大于 0.3 秒。如果 manifest 已经存在但不完整，非严格检查也会报错。
 
 ## 测试
 
@@ -86,18 +88,26 @@ npm test
 首次部署：
 
 1. 在 GitHub（账号 `zhaokelei7-ux`）新建仓库 `birthday-yezhirui`，不要初始化 README。
-2. 在项目目录执行：
+2. 打开仓库 Settings → Pages，Source 选择「GitHub Actions」。先启用 Pages，再推送，否则第一次工作流可能失败；工作流里也加了 `enablement: true` 作为兜底。
+3. 确认 28 段录音已转换并提交：
+
+```bash
+/d/miniconda/envs/finpy/python.exe scripts/convert_audio.py
+git add audio data/audio-manifest.json
+git commit -m "chore: add 28 recorded blessings"
+```
+
+4. 添加远端并推送：
 
 ```bash
 git remote add origin https://github.com/zhaokelei7-ux/birthday-yezhirui.git
 git push -u origin main
 ```
 
-3. 打开仓库 Settings → Pages，Source 选择「GitHub Actions」。
-4. 等待 Actions 完成，链接形如：
+5. 等待 Actions 完成，链接形如：
    `https://zhaokelei7-ux.github.io/birthday-yezhirui/`
 
-之后每次 push 到 `main` 都会自动校验并部署。
+之后每次 push 到 `main` 都会自动校验并部署。如果还没提交 28 段音频就推送，严格校验会失败，这是预期行为。
 
 ## 隐私说明
 
