@@ -95,6 +95,53 @@ class AudioToolsTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("audio-manifest.json", result.stdout)
 
+    def test_convert_preserves_existing_manifest_when_no_sources(self):
+        manifest_path = self.root / "data" / "audio-manifest.json"
+        existing = {
+            "宋书涵": {"file": "audio/p01.mp3", "duration": 1.23},
+        }
+        manifest_path.write_text(
+            json.dumps(existing, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        before = manifest_path.read_bytes()
+        shutil.rmtree(self.root / "audio-src")
+        (self.root / "audio-src").mkdir()
+
+        result = self.run_script(CONVERT)
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(manifest_path.read_bytes(), before)
+        self.assertIn("保留现有 manifest", result.stdout)
+
+    def test_check_assets_rejects_manifest_files_outside_audio(self):
+        people = json.loads((self.root / "data" / "people.json").read_text(encoding="utf-8"))
+        (self.root / "audio").mkdir()
+        (self.root / "audio" / "ok.mp3").write_bytes(b"fake mp3")
+        (Path(self.tmp.name) / "people.json").write_text("[]", encoding="utf-8")
+        target = people[0]["name"]
+        manifest_path = self.root / "data" / "audio-manifest.json"
+
+        bad_files = ["../people.json", str(self.root / "data" / "people.json")]
+        for bad_file in bad_files:
+            manifest = {
+                person["name"]: {
+                    "file": bad_file if person["name"] == target else "audio/ok.mp3",
+                    "duration": 1.0,
+                }
+                for person in people
+            }
+            manifest_path.write_text(
+                json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_script(CHECK, "--strict")
+
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(f"✗ {target}", result.stdout)
+            self.assertIn("manifest file 必须是 audio/ 下的相对路径", result.stdout)
+
     @unittest.skipUnless(HAVE_FFMPEG, "需要 ffmpeg 才能验证转码失败路径")
     def test_convert_fails_when_transcode_fails(self):
         root = Path(self.tmp.name) / "corrupt"

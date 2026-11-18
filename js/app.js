@@ -99,7 +99,11 @@ function el(tag, attrs) {
 
 function ariaLabel(entry, lit, canReplay) {
   const group = entry.group === 'classmate' ? entry.team : GROUP_LABEL[entry.group];
-  if (!lit) return `${entry.name}，${group}，未点亮，点击播放语音`;
+  if (!lit) {
+    return canReplay
+      ? `${entry.name}，${group}，未点亮，点击播放语音`
+      : `${entry.name}，${group}，未点亮，语音暂缺，点击查看祝福`;
+  }
   return canReplay
     ? `${entry.name}，${group}，已点亮，点击查看祝福并重播语音`
     : `${entry.name}，${group}，已点亮，点击查看祝福`;
@@ -150,12 +154,12 @@ function renderCake() {
     group.append(label);
 
     const flamePosition = entry.ring === 'center'
-      ? { x: CENTER, y: CENTER }
+      ? polar(CENTER, CENTER, 70, 0)
       : polar(CENTER, CENTER, RINGS[entry.ring].outer - 16, entry.labelAngle);
     group.append(el('circle', {
       cx: flamePosition.x,
       cy: flamePosition.y,
-      r: entry.ring === 'center' ? 0 : 3.2,
+      r: 3.2,
       class: 'flame',
     }));
 
@@ -174,6 +178,7 @@ function renderCake() {
 
 function render() {
   els.progress.textContent = String(countLit(state));
+  els.cake.classList.toggle('is-playing', state.status === 'playing');
 
   for (const entry of layout) {
     const node = sliceNodes.get(entry.name);

@@ -102,9 +102,27 @@ def check_audio(root, people, strict):
             ok = False
             continue
 
-        audio_path = root / entry.get("file", "")
-        if not audio_path.exists() or audio_path.stat().st_size == 0:
-            print(f"✗ {name} 的音频文件不存在或为空：{entry.get('file')}")
+        file_value = entry.get("file")
+        if not isinstance(file_value, str) or not file_value.strip():
+            print(f"✗ {name} 的 manifest file 字段无效：{file_value!r}")
+            ok = False
+            continue
+
+        relative = Path(file_value)
+        if relative.is_absolute() or not relative.parts or relative.parts[0] != "audio":
+            print(f"✗ {name} 的 manifest file 必须是 audio/ 下的相对路径：{file_value}")
+            ok = False
+            continue
+
+        audio_root = (root / "audio").resolve()
+        audio_path = (root / relative).resolve()
+        if not audio_path.is_relative_to(audio_root):
+            print(f"✗ {name} 的 manifest file 越出 audio/ 目录：{file_value}")
+            ok = False
+            continue
+
+        if not audio_path.is_file() or audio_path.stat().st_size == 0:
+            print(f"✗ {name} 的音频文件不存在或为空：{file_value}")
             ok = False
             continue
 

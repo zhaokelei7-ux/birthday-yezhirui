@@ -154,6 +154,11 @@ def main():
             shutil.copyfile(source, copy_path)
             relative = f"audio/{copy_path.name}"
             duration = probe_duration(None, source)
+            if duration <= 0:
+                print(f"✗ {name}: 无法读取音频时长，请安装 imageio-ffmpeg")
+                missing.append(name)
+                copy_path.unlink()
+                continue
             print(f"! {name}: 未转码，直接使用 {copy_path.name}")
         else:
             print(f"✗ {name}: 无法处理 {source.suffix}，请安装 imageio-ffmpeg")
@@ -167,10 +172,15 @@ def main():
         print(f"✓ {name} -> {relative} ({duration:.1f}s)")
 
     manifest_path = root / "data" / "audio-manifest.json"
-    manifest_path.write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    if not manifest and len(missing) == len(people) and manifest_path.exists():
+        print("! 所有录音都未能处理，保留现有 manifest 不变")
+        print("缺少或失败的名单：" + "、".join(missing))
+        return 1
+
+    manifest_text = json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
+    tmp_path = manifest_path.with_suffix(".json.tmp")
+    tmp_path.write_text(manifest_text, encoding="utf-8")
+    tmp_path.replace(manifest_path)
 
     print(f"\n完成：{len(manifest)}/{len(people)} 段音频")
     print(f"manifest: {manifest_path}")

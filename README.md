@@ -81,7 +81,7 @@ npm test
 
 ## 修改祝福文案
 
-直接编辑 `data/people.json` 的 `blessing` 字段。姓名必须与 `audio-src/` 中的录音文件名一致。
+直接编辑 `data/people.json` 的 `blessing` 字段。姓名必须与 `audio-src/` 中的录音文件名一致。祝福文案需为 8–60 个字符，否则 `check_assets.py` 校验不通过。
 
 ## 部署到 GitHub Pages
 
