@@ -38,6 +38,7 @@ let activeName = null;
 let activeView = 'blessing';
 let lastFocus = null;
 let stopFireworks = null;
+let finaleReturnFocus = null;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const sliceNodes = new Map();
 
@@ -213,7 +214,7 @@ function handleSlice(name) {
   const audio = manifest[name];
   if (!audio) {
     state = completePlayback(state, name, { missingAudio: true });
-    afterLit(entry, true);
+    afterLit(entry, true, true);
     return;
   }
 
@@ -228,8 +229,9 @@ function handleAudioEnded() {
   const entry = layout.find((person) => person.name === name);
   if (!entry) return;
 
+  const newlyLit = !isLit(state, name);
   state = completePlayback(state, name);
-  afterLit(entry, false);
+  afterLit(entry, false, newlyLit);
 }
 
 function handleAudioError() {
@@ -238,15 +240,16 @@ function handleAudioError() {
   const entry = layout.find((person) => person.name === name);
   if (!entry) return;
 
+  const newlyLit = !isLit(state, name);
   state = completePlayback(state, name, { missingAudio: true });
-  afterLit(entry, true);
+  afterLit(entry, true, newlyLit);
 }
 
-function afterLit(entry, missingAudio) {
+function afterLit(entry, missingAudio, newlyLit = false) {
   saveLit(getStorage(), state.lit);
   render();
 
-  if (isComplete(state)) {
+  if (newlyLit && isComplete(state)) {
     closeCard({ stopAudio: false });
     showFinale();
     return;
@@ -297,6 +300,7 @@ function closeCard({ stopAudio = true } = {}) {
 }
 
 function showFinale() {
+  if (els.finale.hidden) finaleReturnFocus = document.activeElement;
   els.finale.hidden = false;
   els.finaleClose.focus({ preventScroll: true });
 
@@ -315,6 +319,11 @@ function hideFinale() {
     stopFireworks = null;
   }
   els.finale.hidden = true;
+
+  if (finaleReturnFocus && document.contains(finaleReturnFocus)) {
+    finaleReturnFocus.focus({ preventScroll: true });
+  }
+  finaleReturnFocus = null;
 }
 
 function replay() {
