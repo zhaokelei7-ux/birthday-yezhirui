@@ -61,6 +61,14 @@ test('missing audio still lights the person and records the flag', () => {
   assert.deepEqual(state.missingAudio, ['宋书涵']);
 });
 
+test('successful playback clears a previous missing-audio flag', () => {
+  let state = createState({ missingAudio: ['宋书涵'] });
+  state = beginPlayback(state, '宋书涵');
+  state = completePlayback(state, '宋书涵');
+  assert.deepEqual(state.missingAudio, []);
+  assert.equal(isLit(state, '宋书涵'), true);
+});
+
 test('replaying a lit person does not duplicate or unlight', () => {
   let state = completePlayback(beginPlayback(createState(), '宋书涵'), '宋书涵');
   state = beginPlayback(state, '宋书涵');

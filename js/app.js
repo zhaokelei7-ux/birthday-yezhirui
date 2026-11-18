@@ -325,7 +325,7 @@ function bindEvents() {
 }
 
 function resetProgress() {
-  if (!window.confirm('确定要清空 28 份祝福的点亮进度吗？')) return;
+  if (!window.confirm(`确定要清空 ${TOTAL} 份祝福的点亮进度吗？`)) return;
 
   player.stop();
   clearLit(getStorage());

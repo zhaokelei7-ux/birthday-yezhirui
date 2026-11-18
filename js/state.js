@@ -18,9 +18,9 @@ export function completePlayback(state, name, { missingAudio = false } = {}) {
   if (state.playingName !== name) return state;
 
   const lit = state.lit.includes(name) ? state.lit : [...state.lit, name];
-  const missing = missingAudio && !state.missingAudio.includes(name)
-    ? [...state.missingAudio, name]
-    : state.missingAudio;
+  const missing = missingAudio
+    ? (state.missingAudio.includes(name) ? state.missingAudio : [...state.missingAudio, name])
+    : state.missingAudio.filter((item) => item !== name);
 
   return {
     ...state,

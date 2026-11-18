@@ -37,7 +37,7 @@ export function createPlayer({
     if (Number.isFinite(audio.duration)) onDuration(audio.duration);
   });
 
-  function play(src, { durationHint = 15 } = {}) {
+  function play(src, { durationHint = null } = {}) {
     stop();
     playing = true;
     id += 1;
