@@ -1,7 +1,7 @@
 import { buildLayout, CENTER, RINGS, polar, sectorPath } from './geometry.js';
 import {
   createState, beginPlayback, completePlayback, cancelPlayback,
-  isLit, countLit, isComplete,
+  isLit, countLit, TOTAL,
 } from './state.js';
 import { loadLit, saveLit, clearLit } from './storage.js';
 import { createPlayer } from './audio.js';
@@ -88,11 +88,12 @@ function el(tag, attrs) {
   return node;
 }
 
-function ariaLabel(entry, lit) {
+function ariaLabel(entry, lit, canReplay) {
   const group = entry.group === 'classmate' ? entry.team : GROUP_LABEL[entry.group];
-  return lit
+  if (!lit) return `${entry.name}，${group}，未点亮，点击播放语音`;
+  return canReplay
     ? `${entry.name}，${group}，已点亮，点击查看祝福并重播语音`
-    : `${entry.name}，${group}，未点亮，点击播放语音`;
+    : `${entry.name}，${group}，已点亮，点击查看祝福`;
 }
 
 function renderCake() {
@@ -106,7 +107,7 @@ function renderCake() {
       tabindex: '0',
       'data-name': entry.name,
       'data-team': entry.team,
-      'aria-label': ariaLabel(entry, false),
+      'aria-label': ariaLabel(entry, false, Boolean(manifest[entry.name])),
     });
 
     if (entry.ring === 'center') {
@@ -170,13 +171,12 @@ function render() {
     const lit = isLit(state, entry.name);
     node.group.classList.toggle('lit', lit);
     node.group.classList.toggle('playing', state.playingName === entry.name);
-    node.group.classList.toggle('missing', state.missingAudio.includes(entry.name));
-    node.group.setAttribute('aria-label', ariaLabel(entry, lit));
+    node.group.setAttribute('aria-label', ariaLabel(entry, lit, Boolean(manifest[entry.name])));
   }
 
   const count = countLit(state);
-  if (count >= 28) {
-    els.hint.textContent = '28 份祝福，全部点亮。';
+  if (count >= TOTAL) {
+    els.hint.textContent = `${TOTAL} 份祝福，全部点亮。`;
   } else if (count === 0) {
     els.hint.textContent = '点击任意一块蛋糕，听 TA 对你说生日快乐';
   } else {
@@ -198,13 +198,12 @@ function handleSlice(name) {
   const started = beginPlayback(state, name);
   if (!started) return;
 
-  const previous = state;
   state = started;
 
   const audio = manifest[name];
   if (!audio) {
     state = completePlayback(state, name, { missingAudio: true });
-    afterLit(previous, entry, true);
+    afterLit(entry, true);
     return;
   }
 
@@ -219,9 +218,8 @@ function handleAudioEnded() {
   const entry = layout.find((person) => person.name === name);
   if (!entry) return;
 
-  const previous = state;
   state = completePlayback(state, name);
-  afterLit(previous, entry, false);
+  afterLit(entry, false);
 }
 
 function handleAudioError() {
@@ -230,12 +228,11 @@ function handleAudioError() {
   const entry = layout.find((person) => person.name === name);
   if (!entry) return;
 
-  const previous = state;
   state = completePlayback(state, name, { missingAudio: true });
-  afterLit(previous, entry, true);
+  afterLit(entry, true);
 }
 
-function afterLit(previous, entry, missingAudio) {
+function afterLit(entry, missingAudio) {
   saveLit(getStorage(), state.lit);
   render();
   openCard(entry, 'blessing', { missingAudio });
@@ -246,7 +243,9 @@ function openCard(entry, view, { missingAudio = false } = {}) {
   activeView = view;
 
   const groupName = entry.group === 'classmate' ? entry.team : GROUP_LABEL[entry.group];
-  const missing = missingAudio || state.missingAudio.includes(entry.name);
+  const missing = missingAudio || state.missingAudio.includes(entry.name) || !manifest[entry.name];
+
+  els.card.hidden = false;
 
   els.cardKicker.textContent = view === 'playing' ? '正在收听' : '来自';
   els.cardTitle.textContent = view === 'playing'
@@ -261,7 +260,6 @@ function openCard(entry, view, { missingAudio = false } = {}) {
   els.cardBar.style.width = view === 'playing' ? '0%' : '100%';
   els.cardReplay.hidden = view !== 'blessing' || !manifest[entry.name];
 
-  els.card.hidden = false;
   els.cardClose.focus({ preventScroll: true });
 }
 

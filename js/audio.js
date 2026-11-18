@@ -13,8 +13,7 @@ export function createPlayer({
 
   function fail(reason) {
     if (!playing) return;
-    playing = false;
-    clearTimeout(timer);
+    stop();
     onError(reason);
   }
 
@@ -47,10 +46,11 @@ export function createPlayer({
     audio.src = src;
     audio.currentTime = 0;
 
-    const hint = Math.max(5, Number(durationHint) || 15);
+    const hint = Number(durationHint);
+    const timeout = Number.isFinite(hint) && hint > 0 ? hint * 1000 + 5000 : 15000;
     timer = setTimeout(() => {
       if (playing && current === id) fail('timeout');
-    }, hint * 1000 + 5000);
+    }, timeout);
 
     const result = audio.play();
     if (result && typeof result.catch === 'function') {
