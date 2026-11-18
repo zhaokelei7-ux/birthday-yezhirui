@@ -1,10 +1,11 @@
 import { buildLayout, CENTER, RINGS, polar, sectorPath } from './geometry.js';
 import {
   createState, beginPlayback, completePlayback, cancelPlayback,
-  isLit, countLit, TOTAL,
+  isLit, countLit, isComplete, TOTAL,
 } from './state.js';
 import { loadLit, saveLit, clearLit } from './storage.js';
 import { createPlayer } from './audio.js';
+import { startFireworks } from './finale.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const GROUP_LABEL = { classmate: '同学', volunteer: '志工', teacher: '班主任' };
@@ -22,6 +23,11 @@ const els = {
   cardBar: document.querySelector('#card-bar'),
   cardReplay: document.querySelector('#card-replay'),
   cardClose: document.querySelector('#card-close'),
+  finale: document.querySelector('#finale'),
+  finaleCanvas: document.querySelector('#finale-canvas'),
+  finaleClose: document.querySelector('#finale-close'),
+  finaleAgain: document.querySelector('#finale-again'),
+  finaleReplay: document.querySelector('#finale-replay'),
 };
 
 let layout = [];
@@ -31,6 +37,8 @@ let player = null;
 let activeName = null;
 let activeView = 'blessing';
 let lastFocus = null;
+let stopFireworks = null;
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const sliceNodes = new Map();
 
 function getStorage() {
@@ -182,6 +190,8 @@ function render() {
   } else {
     els.hint.textContent = `已有 ${count} 份祝福被点亮，继续点击灰暗的蛋糕吧`;
   }
+
+  els.finaleReplay.hidden = !isComplete(state);
 }
 
 function handleSlice(name) {
@@ -235,6 +245,13 @@ function handleAudioError() {
 function afterLit(entry, missingAudio) {
   saveLit(getStorage(), state.lit);
   render();
+
+  if (isComplete(state)) {
+    closeCard({ stopAudio: false });
+    showFinale();
+    return;
+  }
+
   openCard(entry, 'blessing', { missingAudio });
 }
 
@@ -279,6 +296,27 @@ function closeCard({ stopAudio = true } = {}) {
   lastFocus = null;
 }
 
+function showFinale() {
+  els.finale.hidden = false;
+  els.finaleClose.focus({ preventScroll: true });
+
+  if (reducedMotion) {
+    els.finale.classList.add('reduced');
+    return;
+  }
+
+  if (stopFireworks) stopFireworks();
+  stopFireworks = startFireworks(els.finaleCanvas, { duration: 8000 });
+}
+
+function hideFinale() {
+  if (stopFireworks) {
+    stopFireworks();
+    stopFireworks = null;
+  }
+  els.finale.hidden = true;
+}
+
 function replay() {
   if (!activeName || state.status === 'playing') return;
 
@@ -318,9 +356,17 @@ function bindEvents() {
     if (event.target === els.card) closeCard();
   });
   els.reset.addEventListener('click', resetProgress);
+  els.finaleClose.addEventListener('click', hideFinale);
+  els.finaleAgain.addEventListener('click', showFinale);
+  els.finaleReplay.addEventListener('click', showFinale);
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !els.card.hidden) closeCard();
+    if (event.key !== 'Escape') return;
+    if (!els.finale.hidden) {
+      hideFinale();
+    } else if (!els.card.hidden) {
+      closeCard();
+    }
   });
 }
 
@@ -331,6 +377,8 @@ function resetProgress() {
   clearLit(getStorage());
   state = createState();
   closeCard({ stopAudio: false });
+  hideFinale();
+  els.finaleReplay.hidden = true;
   render();
 }
 
