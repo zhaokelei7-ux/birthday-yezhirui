@@ -95,6 +95,21 @@ class AudioToolsTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("audio-manifest.json", result.stdout)
 
+    def test_nonstrict_check_allows_partial_audio(self):
+        sources = sorted((self.root / "audio-src").glob("*.wav"))
+        for source in sources[1:]:
+            source.unlink()
+
+        conversion = self.run_script(CONVERT)
+        self.assertEqual(conversion.returncode, 1, conversion.stdout + conversion.stderr)
+
+        relaxed = self.run_script(CHECK)
+        self.assertEqual(relaxed.returncode, 0, relaxed.stdout + relaxed.stderr)
+        self.assertIn("仍缺", relaxed.stdout)
+
+        strict = self.run_script(CHECK, "--strict")
+        self.assertNotEqual(strict.returncode, 0)
+
     def test_convert_preserves_existing_manifest_when_no_sources(self):
         manifest_path = self.root / "data" / "audio-manifest.json"
         existing = {

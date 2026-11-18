@@ -63,7 +63,7 @@ ES Modules 不能直接用 `file://` 打开，需要起一个本地服务器：
 ## 校验
 
 ```bash
-# 日常检查：没有 manifest 时只校验人员数据
+# 日常检查：音频不齐也能通过，只校验人员数据和已登记的音频
 /d/miniconda/envs/finpy/python.exe scripts/check_assets.py
 
 # 部署前严格检查（要求 28 段音频齐全且时长 > 0.3 秒）

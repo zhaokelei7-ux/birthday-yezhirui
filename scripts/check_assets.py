@@ -99,7 +99,8 @@ def check_audio(root, people, strict):
         entry = manifest.get(name)
         if not entry:
             missing.append(name)
-            ok = False
+            if strict:
+                ok = False
             continue
 
         file_value = entry.get("file")
@@ -134,7 +135,9 @@ def check_audio(root, people, strict):
     if missing:
         print("✗ 缺少音频：" + "、".join(missing))
 
-    if ok:
+    if ok and missing:
+        print(f"! 已登记的 {len(people) - len(missing)} 段音频有效，仍缺 {len(missing)} 段（非严格模式忽略）")
+    elif ok:
         print(f"✓ 音频资源通过：{len(people)} 段")
     return ok
 
