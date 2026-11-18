@@ -1,6 +1,26 @@
 {
+  "宋书涵": {
+    "file": "audio/p01.mp3",
+    "duration": 6.57
+  },
+  "卢冲": {
+    "file": "audio/p02.mp3",
+    "duration": 9.9
+  },
+  "樊佳": {
+    "file": "audio/p10.mp3",
+    "duration": 16.96
+  },
+  "黄崇珂": {
+    "file": "audio/p19.mp3",
+    "duration": 3.93
+  },
   "张珊妮": {
     "file": "audio/p20.mp3",
     "duration": 3.75
+  },
+  "郑会": {
+    "file": "audio/p22.mp3",
+    "duration": 7.93
   }
 }
