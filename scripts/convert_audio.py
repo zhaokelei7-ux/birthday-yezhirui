@@ -135,16 +135,25 @@ def main():
             continue
 
         mp3_path = out_dir / f"p{index:02d}.mp3"
-        converted = bool(ffmpeg) and transcode(ffmpeg, source, mp3_path)
 
-        if converted:
+        if ffmpeg:
+            if not transcode(ffmpeg, source, mp3_path):
+                print(f"✗ {name}: 转码失败（{source.name}）")
+                if mp3_path.exists():
+                    mp3_path.unlink()
+                missing.append(name)
+                continue
             relative = f"audio/{mp3_path.name}"
-            duration = probe_duration(ffmpeg, mp3_path) or probe_duration(ffmpeg, source)
+            duration = probe_duration(ffmpeg, mp3_path)
+            if duration <= 0:
+                print(f"✗ {name}: 无法读取转码后音频时长")
+                missing.append(name)
+                continue
         elif source.suffix.lower() in BROWSER_SAFE_FALLBACK:
             copy_path = out_dir / f"p{index:02d}{source.suffix.lower()}"
             shutil.copyfile(source, copy_path)
             relative = f"audio/{copy_path.name}"
-            duration = probe_duration(ffmpeg, source)
+            duration = probe_duration(None, source)
             print(f"! {name}: 未转码，直接使用 {copy_path.name}")
         else:
             print(f"✗ {name}: 无法处理 {source.suffix}，请安装 imageio-ffmpeg")

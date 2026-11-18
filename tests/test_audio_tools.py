@@ -1,5 +1,6 @@
 import json
 import math
+import shutil
 import struct
 import subprocess
 import sys
@@ -12,6 +13,19 @@ ROOT = Path(__file__).resolve().parents[1]
 CONVERT = ROOT / "scripts" / "convert_audio.py"
 CHECK = ROOT / "scripts" / "check_assets.py"
 PYTHON = sys.executable
+
+
+def have_ffmpeg():
+    try:
+        import imageio_ffmpeg
+        if imageio_ffmpeg.get_ffmpeg_exe():
+            return True
+    except Exception:
+        pass
+    return shutil.which("ffmpeg") is not None
+
+
+HAVE_FFMPEG = have_ffmpeg()
 
 
 def make_wav(path, seconds=0.6, freq=440.0):
@@ -80,6 +94,36 @@ class AudioToolsTest(unittest.TestCase):
         result = self.run_script(CHECK, "--strict")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("audio-manifest.json", result.stdout)
+
+    @unittest.skipUnless(HAVE_FFMPEG, "需要 ffmpeg 才能验证转码失败路径")
+    def test_convert_fails_when_transcode_fails(self):
+        root = Path(self.tmp.name) / "corrupt"
+        (root / "data").mkdir(parents=True)
+        people = [
+            {
+                "name": "测试员",
+                "group": "teacher",
+                "team": "班主任",
+                "blessing": "叶智睿，生日快乐！愿你天天开心。",
+            }
+        ]
+        (root / "data" / "people.json").write_text(
+            json.dumps(people, ensure_ascii=False), encoding="utf-8"
+        )
+        (root / "audio-src").mkdir()
+        (root / "audio-src" / "测试员.m4a").write_bytes(b"this is not audio")
+
+        result = subprocess.run(
+            [PYTHON, str(CONVERT), "--root", str(root)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+        )
+
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("转码失败", result.stdout)
+        self.assertFalse((root / "audio" / "p01.mp3").exists())
 
 
 if __name__ == "__main__":
