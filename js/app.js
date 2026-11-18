@@ -85,8 +85,8 @@ async function init() {
     bindEvents();
     render();
   } catch (error) {
-    console.error(error);
-    els.hint.textContent = '页面加载失败，请刷新重试。';
+    console.error('[birthday] 初始化失败', error);
+    els.hint.textContent = '页面加载失败，请刷新重试；如果仍然失败，请联系制作人。';
     els.cake.replaceChildren();
   }
 }

@@ -1,13 +1,107 @@
 # 叶智睿的生日祝福
 
-28 块三层蛋糕的生日祝福单页。点击姓名播放录音，播完点亮该块，全部点亮后放烟花。
+一个可以发链接的生日祝福单页：三层生日蛋糕共 28 块，点击姓名播放录音，播完后点亮该块并显示文字祝福；28 块全部点亮后放烟花。
+
+## 项目结构
+
+```
+index.html            页面结构
+styles.css            全部样式
+js/geometry.js        扇区角度与 SVG 路径（纯函数）
+js/state.js           点亮/播放状态机（纯函数）
+js/storage.js         localStorage 读写
+js/audio.js           语音播放控制
+js/finale.js          canvas 烟花
+js/app.js             页面渲染与事件
+data/people.json      28 人名单与祝福
+data/audio-manifest.json  音频清单（由脚本生成）
+audio/                转码后的音频（部署用）
+audio-src/            原始录音（不提交、不部署）
+scripts/              音频转码与资源校验
+tests/                自动化测试
+```
 
 ## 本地预览
+
+ES Modules 不能直接用 `file://` 打开，需要起一个本地服务器：
 
 ```bash
 /d/miniconda/envs/finpy/python.exe -m http.server 8000
 ```
 
-浏览器打开 http://localhost:8000/
+打开 http://localhost:8000/ 。
 
-详细说明见后续版本。
+## 录音要求
+
+- 每人一段，安静环境录制，离麦克风 10–20cm。
+- 每段 2–15 秒，开头直接说「叶智睿，生日快乐！」。
+- 文件名写姓名，例如 `宋书涵.m4a`。
+- 支持的格式：`.mp3`、`.m4a`、`.aac`、`.wav`、`.ogg`、`.flac`、`.amr`。
+- 把文件放进 `audio-src/`，不要放进 `audio/`。
+
+## 导入录音
+
+```bash
+/d/miniconda/envs/finpy/python.exe scripts/convert_audio.py
+```
+
+脚本会：
+
+1. 按 `data/people.json` 的顺序查找 `audio-src/<姓名>.<扩展名>`；
+2. 转成 `audio/p01.mp3` … `audio/p28.mp3`（单声道 16kHz 64kbps，响度归一化）；
+3. 生成 `data/audio-manifest.json`；
+4. 打印缺失名单。
+
+如果缺少 `imageio-ffmpeg`，先安装：
+
+```bash
+/d/miniconda/envs/finpy/python.exe -m pip install imageio-ffmpeg
+```
+
+没有 ffmpeg 时脚本会直接复制浏览器可播放的源文件，页面仍能工作，但不会统一音量。
+
+## 校验
+
+```bash
+# 日常检查（音频不齐也能通过人员校验）
+/d/miniconda/envs/finpy/python.exe scripts/check_assets.py
+
+# 部署前严格检查（要求 28 段音频齐全且时长正常）
+/d/miniconda/envs/finpy/python.exe scripts/check_assets.py --strict
+```
+
+## 测试
+
+```bash
+npm test
+/d/miniconda/envs/finpy/python.exe -m unittest discover -s tests -p "test_*.py" -v
+```
+
+## 修改祝福文案
+
+直接编辑 `data/people.json` 的 `blessing` 字段。姓名必须与 `audio-src/` 中的录音文件名一致。
+
+## 部署到 GitHub Pages
+
+首次部署：
+
+1. 在 GitHub（账号 `zhaokelei7-ux`）新建仓库 `birthday-yezhirui`，不要初始化 README。
+2. 在项目目录执行：
+
+```bash
+git remote add origin https://github.com/zhaokelei7-ux/birthday-yezhirui.git
+git push -u origin main
+```
+
+3. 打开仓库 Settings → Pages，Source 选择「GitHub Actions」。
+4. 等待 Actions 完成，链接形如：
+   `https://zhaokelei7-ux.github.io/birthday-yezhirui/`
+
+之后每次 push 到 `main` 都会自动校验并部署。
+
+## 隐私说明
+
+- 页面加了 `noindex`，不会被搜索引擎收录。
+- 免费版 GitHub Pages 要求仓库公开，姓名和音频理论上可被直接访问。
+- 音频文件使用编号命名，不在 URL 中暴露姓名。
+- 如果介意公开，可改用 Netlify / Vercel（源码可私有，站点仍公开），或使用 GitHub Pro 的私有仓库 Pages。
