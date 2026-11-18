@@ -69,6 +69,10 @@ function renderCake() {
         d: sectorPath(CENTER, CENTER, ring.inner, ring.outer, entry.startAngle, entry.endAngle),
         class: 'slice-shape',
       }));
+      group.append(el('path', {
+        d: sectorPath(CENTER, CENTER, ring.inner - 4, ring.outer + 4, entry.startAngle, entry.endAngle),
+        class: 'slice-hit',
+      }));
     }
 
     const position = polar(CENTER, CENTER, entry.labelRadius, entry.labelAngle);
