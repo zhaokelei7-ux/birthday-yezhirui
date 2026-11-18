@@ -7,6 +7,10 @@
     "file": "audio/p02.mp3",
     "duration": 9.9
   },
+  "周慧惠": {
+    "file": "audio/p03.mp3",
+    "duration": 15.7
+  },
   "姚翔": {
     "file": "audio/p04.mp3",
     "duration": 18.55
@@ -18,6 +22,10 @@
   "张慧峰": {
     "file": "audio/p07.mp3",
     "duration": 10.21
+  },
+  "欧阳玲玲": {
+    "file": "audio/p09.mp3",
+    "duration": 8.15
   },
   "樊佳": {
     "file": "audio/p10.mp3",
@@ -70,5 +78,9 @@
   "黄美娟": {
     "file": "audio/p26.mp3",
     "duration": 28.55
+  },
+  "金文权": {
+    "file": "audio/p27.mp3",
+    "duration": 13.58
   }
 }
