@@ -104,6 +104,13 @@ body::before {
   font-size: 14px;
 }
 
+main {
+  width: min(100%, 760px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .cake-wrap {
   width: min(100%, 720px);
   aspect-ratio: 1;
