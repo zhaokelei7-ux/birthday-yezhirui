@@ -1,9 +1,9 @@
 :root {
   --bg-0: #17110f;
-  --plate: #211814;
-  --unlit: #4b4654;
-  --unlit-hover: #5a5466;
-  --unlit-text: #b9b3c6;
+  --plate: #241610;
+  --unlit: #5b4231;
+  --unlit-hover: #6f523d;
+  --unlit-text: #f4e3cc;
   --lit: #fff4de;
   --glow: #ffc95c;
   --ink: #f6ece0;
@@ -128,10 +128,77 @@ main {
   touch-action: manipulation;
 }
 
+.plate-shadow {
+  fill: rgba(0, 0, 0, 0.55);
+  filter: blur(14px);
+}
+
 .plate {
   fill: var(--plate);
-  stroke: #3a2b24;
-  stroke-width: 2;
+  stroke: #4a3122;
+  stroke-width: 3;
+}
+
+.cake-decor {
+  pointer-events: none;
+}
+
+.frosting-rim {
+  fill: none;
+  stroke: #f7e3c7;
+  stroke-width: 13;
+  stroke-dasharray: 0.1 25;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+
+.ring-line {
+  fill: none;
+  stroke: rgba(247, 227, 199, 0.38);
+  stroke-width: 3;
+}
+
+.sprinkle {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+.slice.lit .sprinkle {
+  opacity: 0.95;
+}
+
+.candle {
+  opacity: 0.6;
+  transition: opacity 0.5s ease;
+}
+
+.slice.lit .candle {
+  opacity: 1;
+}
+
+.candle-wax {
+  fill: #fff6e8;
+  stroke: rgba(52, 32, 21, 0.5);
+  stroke-width: 1;
+}
+
+.slice[data-team="冲刺队"] .candle-wax { fill: var(--team-sprint); }
+.slice[data-team="战神队"] .candle-wax { fill: var(--team-war); }
+.slice[data-team="超越队"] .candle-wax { fill: var(--team-beyond); }
+.slice[data-team="力量队"] .candle-wax { fill: var(--team-power); }
+.slice[data-team="志工团"] .candle-wax { fill: var(--team-volunteer); }
+.slice[data-team="班主任"] .candle-wax { fill: var(--team-teacher); }
+
+.candle-band {
+  fill: #fff6e8;
+  opacity: 0.92;
+}
+
+.wick {
+  stroke: #3a2519;
+  stroke-width: 1.6;
+  stroke-linecap: round;
 }
 
 .slice {
@@ -142,9 +209,12 @@ main {
   opacity: 0.5;
 }
 
+.slice[data-ring="middle"] { --unlit: #674b37; }
+.slice[data-ring="center"] { --unlit: #71543e; }
+
 .slice-shape {
   fill: var(--unlit);
-  stroke: #2b241f;
+  stroke: #3a2519;
   stroke-width: 2;
   cursor: pointer;
   transition: fill 0.5s ease, stroke 0.4s ease, filter 0.4s ease;
@@ -182,6 +252,7 @@ main {
 
 .slice.lit .slice-shape {
   fill: var(--lit);
+  stroke-width: 3.5;
   filter: drop-shadow(0 0 10px rgba(255, 201, 92, 0.45));
 }
 
@@ -202,9 +273,18 @@ main {
 .slice.playing .slice-name { fill: #fff4de; }
 
 .flame {
-  fill: var(--glow);
+  fill: #ff9f3f;
   opacity: 0;
-  filter: drop-shadow(0 0 6px #ffb347);
+  filter: drop-shadow(0 0 7px #ffb347);
+  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: opacity 0.4s ease;
+}
+
+.flame-core {
+  fill: #fff3c4;
+  opacity: 0;
   pointer-events: none;
   transform-box: fill-box;
   transform-origin: center;
@@ -216,9 +296,19 @@ main {
   animation: flicker 1.6s ease-in-out infinite;
 }
 
+.slice.lit .flame-core {
+  opacity: 1;
+  animation: flicker-core 1.1s ease-in-out infinite;
+}
+
 @keyframes flicker {
-  0%, 100% { opacity: 0.75; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.25); }
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.18); }
+}
+
+@keyframes flicker-core {
+  0%, 100% { opacity: 0.85; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.1); }
 }
 
 .legend {
@@ -448,5 +538,6 @@ noscript {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
-  .slice.lit .flame { animation: none; }
+  .slice.lit .flame,
+  .slice.lit .flame-core { animation: none; }
 }

@@ -109,8 +109,113 @@ function ariaLabel(entry, lit, canReplay) {
     : `${entry.name}，${group}，未点亮，点击播放语音`;
 }
 
+const SPRINKLE_COLORS = ['#ff8a65', '#ffd166', '#7fd1ae', '#7fb7ff', '#ff9fb2'];
+
+// 每块蛋糕上的糖针位置由姓名决定，刷新后保持不变。
+function sprinklesFor(entry) {
+  let seed = 0;
+  for (const char of entry.name) seed = (seed * 31 + char.codePointAt(0)) % 100000;
+  const random = () => {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return seed / 2147483648;
+  };
+
+  const isCenter = entry.ring === 'center';
+  const inner = isCenter ? 120 : RINGS[entry.ring].inner;
+  const outer = isCenter ? 190 : RINGS[entry.ring].outer;
+  const start = isCenter ? 0 : entry.startAngle;
+  const span = isCenter ? 360 : entry.endAngle - entry.startAngle;
+  const nodes = [];
+
+  for (let index = 0; index < 4; index += 1) {
+    const radius = inner + (outer - inner) * (0.2 + random() * 0.65);
+    const angle = start + span * (0.12 + random() * 0.76);
+    const position = polar(CENTER, CENTER, radius, angle);
+    nodes.push(el('rect', {
+      x: (position.x - 7).toFixed(2),
+      y: (position.y - 2.5).toFixed(2),
+      width: 14,
+      height: 5,
+      rx: 2.5,
+      fill: SPRINKLE_COLORS[Math.floor(random() * SPRINKLE_COLORS.length)],
+      class: 'sprinkle',
+      transform: `rotate(${(random() * 180).toFixed(1)} ${position.x.toFixed(2)} ${position.y.toFixed(2)})`,
+    }));
+  }
+
+  return nodes;
+}
+
+function candleFor(entry) {
+  const isCenter = entry.ring === 'center';
+  const span = isCenter ? 0 : entry.endAngle - entry.startAngle;
+  const angle = isCenter ? 0 : entry.startAngle + span * 0.2;
+  const radius = isCenter ? 140 : RINGS[entry.ring].outer - 10;
+  const base = polar(CENTER, CENTER, radius, angle);
+  const width = isCenter ? 18 : 9;
+  const height = isCenter ? 46 : 28;
+  const flameWidth = isCenter ? 9 : 4.8;
+  const flameHeight = isCenter ? 14 : 8.5;
+  const top = base.y - height;
+
+  const candle = el('g', { class: 'candle' });
+  if (!isCenter) {
+    candle.setAttribute(
+      'transform',
+      `rotate(${(angle + 180).toFixed(2)} ${base.x.toFixed(2)} ${base.y.toFixed(2)})`,
+    );
+  }
+  candle.append(el('rect', {
+    x: (base.x - width / 2).toFixed(2),
+    y: top.toFixed(2),
+    width,
+    height,
+    rx: width / 2,
+    class: 'candle-wax',
+  }));
+
+  const bandHeight = Math.max(2.5, height * 0.14);
+  for (const ratio of [0.3, 0.64]) {
+    candle.append(el('rect', {
+      x: (base.x - width / 2).toFixed(2),
+      y: (top + height * ratio).toFixed(2),
+      width,
+      height: bandHeight.toFixed(2),
+      rx: bandHeight / 2,
+      class: 'candle-band',
+    }));
+  }
+
+  candle.append(el('line', {
+    x1: base.x.toFixed(2),
+    y1: top.toFixed(2),
+    x2: base.x.toFixed(2),
+    y2: (top - (isCenter ? 6 : 4)).toFixed(2),
+    class: 'wick',
+  }));
+
+  const flameCy = top - flameHeight * 0.75;
+  candle.append(el('ellipse', {
+    cx: base.x.toFixed(2),
+    cy: flameCy.toFixed(2),
+    rx: flameWidth,
+    ry: flameHeight,
+    class: 'flame',
+  }));
+  candle.append(el('ellipse', {
+    cx: base.x.toFixed(2),
+    cy: (flameCy + flameHeight * 0.3).toFixed(2),
+    rx: (flameWidth * 0.48).toFixed(2),
+    ry: (flameHeight * 0.52).toFixed(2),
+    class: 'flame-core',
+  }));
+
+  return candle;
+}
+
 function renderCake() {
   els.cake.replaceChildren();
+  els.cake.append(el('circle', { cx: CENTER, cy: CENTER, r: 500, class: 'plate-shadow' }));
   els.cake.append(el('circle', { cx: CENTER, cy: CENTER, r: 492, class: 'plate' }));
 
   for (const entry of layout) {
@@ -120,6 +225,7 @@ function renderCake() {
       tabindex: '0',
       'data-name': entry.name,
       'data-team': entry.team,
+      'data-ring': entry.ring,
       'aria-label': ariaLabel(entry, false, Boolean(manifest[entry.name])),
     });
 
@@ -142,6 +248,8 @@ function renderCake() {
       }));
     }
 
+    for (const sprinkle of sprinklesFor(entry)) group.append(sprinkle);
+
     const position = polar(CENTER, CENTER, entry.labelRadius, entry.labelAngle);
     const label = el('text', {
       x: position.x,
@@ -153,15 +261,7 @@ function renderCake() {
     label.textContent = entry.name;
     group.append(label);
 
-    const flamePosition = entry.ring === 'center'
-      ? polar(CENTER, CENTER, 70, 0)
-      : polar(CENTER, CENTER, RINGS[entry.ring].outer - 16, entry.labelAngle);
-    group.append(el('circle', {
-      cx: flamePosition.x,
-      cy: flamePosition.y,
-      r: 3.2,
-      class: 'flame',
-    }));
+    group.append(candleFor(entry));
 
     group.addEventListener('click', () => handleSlice(entry.name));
     group.addEventListener('keydown', (event) => {
@@ -174,6 +274,12 @@ function renderCake() {
     els.cake.append(group);
     sliceNodes.set(entry.name, { group, label });
   }
+
+  const decor = el('g', { class: 'cake-decor', 'aria-hidden': 'true' });
+  decor.append(el('circle', { cx: CENTER, cy: CENTER, r: RINGS.outer.outer, class: 'frosting-rim' }));
+  decor.append(el('circle', { cx: CENTER, cy: CENTER, r: RINGS.middle.outer, class: 'ring-line' }));
+  decor.append(el('circle', { cx: CENTER, cy: CENTER, r: RINGS.middle.inner, class: 'ring-line' }));
+  els.cake.append(decor);
 }
 
 function render() {
@@ -192,7 +298,7 @@ function render() {
   if (count >= TOTAL) {
     els.hint.textContent = `${TOTAL} 份祝福，全部点亮。`;
   } else if (count === 0) {
-    els.hint.textContent = '点击任意一块蛋糕，听 TA 对你说生日快乐';
+    els.hint.textContent = '点击任意一块蛋糕，听 TA 对你说生日快乐~';
   } else {
     els.hint.textContent = `已有 ${count} 份祝福被点亮，继续点击灰暗的蛋糕吧`;
   }
