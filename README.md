@@ -58,7 +58,7 @@ ES Modules 不能直接用 `file://` 打开，需要起一个本地服务器：
 /d/miniconda/envs/finpy/python.exe -m pip install imageio-ffmpeg
 ```
 
-没有 ffmpeg 时脚本会直接复制浏览器可播放的源文件，页面仍能工作，但不会统一音量。注意：非 WAV 文件在无 ffmpeg 时读不出时长，`--strict` 会失败；部署前请安装 `imageio-ffmpeg`。
+没有 ffmpeg 时脚本只能直接复制 WAV（其余格式读不出时长，会被跳过并计入缺失名单），也不会统一音量；网页对这些缺失项显示「语音暂缺」。部署前请安装 `imageio-ffmpeg`。
 
 ## 校验
 
