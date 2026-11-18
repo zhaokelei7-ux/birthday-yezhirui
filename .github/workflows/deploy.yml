@@ -4,6 +4,11 @@ on:
   push:
     branches: ["main"]
   workflow_dispatch:
+    inputs:
+      skip_strict:
+        description: "音频不齐也发布（仅预览用）"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -38,7 +43,13 @@ jobs:
         run: python -m unittest discover -s tests -p "test_*.py" -v
 
       - name: Validate assets
-        run: python scripts/check_assets.py --strict
+        run: |
+          if [ "${{ inputs.skip_strict }}" = "true" ]; then
+            echo "::warning::跳过严格校验，发布的是音频不全的预览版本"
+            python scripts/check_assets.py
+          else
+            python scripts/check_assets.py --strict
+          fi
 
       - name: Assemble site
         run: |
